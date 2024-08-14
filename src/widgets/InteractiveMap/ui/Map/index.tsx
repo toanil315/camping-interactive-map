@@ -1,15 +1,24 @@
 import { CAMPING_OBJECT_ICON } from '@/constants/camping-object';
-import { useMapBaseClassName } from './style';
+import { useMapBaseClassName, useTentInfoBaseClassName } from './style';
 import ExampleMapSvg from '@/assets/example-map.svg';
 import { useInteractiveMap } from '@/hooks/useInteractiveMap';
-import { MouseEventHandler, useRef } from 'react';
+import { MouseEventHandler, RefObject, createRef, useEffect, useRef, useState } from 'react';
 import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
+import { Popover } from '@/components';
+import { PositioningImperativeRef } from '@fluentui/react-components';
 
 export const Map = () => {
   const mapBaseClassName = useMapBaseClassName();
+  const tentInfoBaseClassName = useTentInfoBaseClassName();
+
   const imageRef = useRef<HTMLImageElement | null>(null);
   const transformRef = useRef<ReactZoomPanPinchRef['state'] | null>(null);
   const { items, selectedTool, addItems } = useInteractiveMap();
+  const [positioningRefs, setPositioningRefs] = useState<RefObject<PositioningImperativeRef>[]>([]);
+
+  useEffect(() => {
+    setPositioningRefs(items.map(() => createRef<PositioningImperativeRef>()));
+  }, [items.length]);
 
   const handleAddCampingObject: MouseEventHandler<HTMLImageElement> = (e) => {
     if (!selectedTool) return;
@@ -40,6 +49,25 @@ export const Map = () => {
     });
   };
 
+  const renderTentInfo = () => {
+    return (
+      <div className={tentInfoBaseClassName}>
+        <img
+          src='https://t3.ftcdn.net/jpg/05/39/76/28/360_F_539762817_90lTAPZAQwcS9nMzlfpGW0GW1JIttMTE.jpg'
+          alt='tent'
+        />
+        <div className='info'>
+          <h4>Luxury Glamping Tent</h4>
+          <p>
+            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatibus consequuntur
+            corporis!
+          </p>
+          <a href='#'>View details</a>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       <TransformWrapper
@@ -61,20 +89,34 @@ export const Map = () => {
               onClick={handleAddCampingObject}
             />
 
-            {items.map((item) => {
+            {items.map((item, index) => {
               const Icon = CAMPING_OBJECT_ICON[item.type];
               return (
-                <Icon
-                  width={40}
-                  height={40}
+                <Popover
+                  positioning={{ positioningRef: positioningRefs[index] }}
+                  content={renderTentInfo()}
                   key={item.id}
-                  style={{
-                    position: 'absolute',
-                    left: `${item.left}%`,
-                    top: `${item.top}%`,
-                    scale: transformRef.current?.scale,
-                  }}
-                />
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${item.left}%`,
+                      top: `${item.top}%`,
+                      scale: transformRef.current?.scale,
+                      cursor: selectedTool ? 'unset' : 'pointer',
+                      zIndex: 100,
+                    }}
+                    onClick={(e) => {
+                      positioningRefs[index].current?.setTarget(e.target as HTMLElement);
+                    }}
+                  >
+                    <Icon
+                      width={40}
+                      height={40}
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  </div>
+                </Popover>
               );
             })}
           </div>
